@@ -1,0 +1,226 @@
+#!/usr/bin/perl -w
+#
+# Copyright 2009 Geoff Levand
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+
+package main;
+
+use strict;
+use warnings;
+use Getopt::Std;
+
+my $app_name = q(fiche-maker);
+my $package_name = q(fiche-maker);
+my $app_version = q(1.0);
+
+sub VERSION_MESSAGE
+{
+	print($app_name . " (" . $package_name . ") " . $app_version . "\n");
+}
+
+$Getopt::Std::STANDARD_HELP_VERSION = 1;
+
+sub HELP_MESSAGE
+{
+	print("SYNOPSIS\n"
+. "     " . $app_name . " [-OPTIONS]\n"
+. "DESCRIPTION\n"
+. "     Reformat html fishe pages.\n"
+. "OPTIONS\n"
+. "     -h, --help\n"
+. "          Print a help message.\n"
+. "     -V, --version\n"
+. "          Display the program version number.\n"
+	);
+}
+
+sub opts_parse (@)
+{
+	my ($opts) = @_;
+	our ($opt_h, $opt_V);
+
+	getopts('hV');
+
+	if (defined($opt_h)) {
+		VERSION_MESSAGE();
+		HELP_MESSAGE();
+		exit 0;
+	}
+	
+	if (defined($opt_V)) {
+		VERSION_MESSAGE();
+		exit 0;
+	}
+}
+
+my $line_no = 0;
+
+sub parse_row (@)
+{
+	my ($part) = @_;
+	my $line;
+
+	die("<tr> not found") if (!m{<tr[^>]*>}i);
+
+	$line_no++;
+	$line = <STDIN>;
+
+	return 0 if ($line =~ m{<td colspan=[^>]+>}i);
+
+	#print STDERR ($line_no . ": parse_row start\n");
+
+	$part->{img_no} = $1
+		if ($line =~ m{<td>([-0-9]+)</td>}i);
+
+	$line_no++;
+	$line = <STDIN>;
+	$part->{desc} = $1
+		if ($line =~ m{<td>(.+)</td>}i);
+
+	$line_no++;
+	$line = <STDIN>;
+	$part->{supp} = $1
+		if ($line =~ m{<td>(.+)</td>}i);
+
+	$line_no++;
+	$line = <STDIN>;
+	$part->{quantity} = $1
+		if ($line =~ m{<td>([X0-9][-0-9]?)</td>}i);
+
+	$line_no++;
+	$line = <STDIN>;
+	$part->{part_no} = $1
+		if ($line =~ m{<td>([-0-9]+)</td>}i);
+
+	$line_no++;
+	$line = <STDIN>;
+	$part->{price} = $1
+		if ($line =~ m{<td align=['"]right['"]>\$?([^\$<]+)</td>}i);
+
+	while(<>) {
+		$line_no++;
+		last if (m{</tr>}i);
+	}
+
+	die("img_no not found") if (!defined($part->{img_no}));
+	die("desc not found") if (!defined($part->{desc}));
+	die("supp not found") if (!defined($part->{supp}));
+	die("quantity not found") if (!defined($part->{quantity}));
+	die("part_no not found") if (!defined($part->{part_no}));
+	die("price not found") if (!defined($part->{price}));
+
+	return 1;
+}
+
+# start of program
+
+my %opts;
+opts_parse(\%opts);
+
+my $time =`date '+%y.%m.%d %H:%M'`;
+chomp($time);
+
+my $part_count = 0;
+
+my %tags;
+my @parts;
+my $in_parts_table = 0;
+
+while(<>) {
+	$line_no++;
+
+	if (!$in_parts_table) {
+		if (m{<title>((.*) - (.*))</title>}i) {
+			$tags{title} = $1;
+			$tags{model} = $2;
+			$tags{group} = $3;
+		}
+		$tags{img} = $1
+			if (m{<a href=['"](.*\.jpg).*View Full Size.*</a>}i);
+		$tags{diagram} = $1
+			if (m{>Diagram # *([0-9]+_[0-9]+)<}i);
+
+		if (m{<tr class=['"]theaders['"]>}i) {
+			$in_parts_table = 1;
+			while(<>) {
+				$line_no++;
+				last if (m{</tr>}i);
+			}
+		}
+	} else {
+		my %part;
+
+		last if (m{</table>}i);
+		next if (!m{<tr>}i);
+
+		if (parse_row(\%part)) {
+			$part_count++;
+			#$part{desc} = $part_count . ": " . $part{desc};
+			push(@parts, \%part);
+		}
+	}
+}
+
+print STDERR ($app_name . ": found " . $part_count . " parts\n");
+
+print STDOUT ("<html>\n");
+print STDOUT ("<head>\n");
+print STDOUT (" <title>" . $tags{title} . "</title>\n");
+print STDOUT ("</head>\n");
+print STDOUT ("<body>\n");
+
+print STDOUT ("<p>\n");
+print STDOUT ("<a href=\"index.html\"><nobr>Index</nobr></a>&nbsp;"
+	. "<a href=\"" . $tags{img} . "\"><nobr>Full Size</nobr></a><br>\n");
+print STDOUT ("<span id=\"model\">". $tags{model} . "</span><br>\n");
+print STDOUT ("Diagram <span id=\"diagram\">" . $tags{diagram} . "</span><br>\n");
+print STDOUT ("<b><span id=\"group\">". $tags{group} . "</span></b>\n");
+print STDOUT ("</p>\n");
+
+print STDOUT ("<p>\n");
+print STDOUT ("<table border=\"1\" cellpadding=\"2\" cellspacing=\"0\">\n");
+
+print STDOUT (" <tr>\n");
+print STDOUT ("  <td colspan=\"6\"><img src=\"" . $tags{img} 
+	. "\" width=\"600\"></td>\n");
+print STDOUT (" </tr>\n");
+print STDOUT ("\n");
+
+print STDOUT (" <tr>\n");
+print STDOUT ("  <td><b>No</b></td>\n");
+print STDOUT ("  <td><b>Description</b></td>\n");
+print STDOUT ("  <td><b>Supplement</b></td>\n");
+print STDOUT ("  <td><b>Qnt</b></td>\n");
+print STDOUT ("  <td><b>Part Number</b></td>\n");
+print STDOUT ("  <td><b>Price</b></td>\n");
+print STDOUT (" </tr>\n");
+print STDOUT ("\n");
+
+PART: foreach my $part (@parts) {
+	print STDOUT (" <tr>\n");
+	print STDOUT ("  <td>" . $part->{img_no} . "</td>\n");
+	print STDOUT ("  <td>" . $part->{desc} . "</td>\n");
+	print STDOUT ("  <td>" . $part->{supp} . "</td>\n");
+	print STDOUT ("  <td>" . $part->{quantity} . "</td>\n");
+	print STDOUT ("  <td>" . $part->{part_no} . "</td>\n");
+	print STDOUT ("  <td align='right'>\$" . $part->{price} . "</td>\n");
+	print STDOUT (" </tr>\n");
+	print STDOUT ("\n");
+}
+
+print STDOUT ("</table>\n");
+print STDOUT ("</p>\n");
+
+print STDOUT ("<p>\n");
+print STDOUT ("processed by " . $app_name . "-" . $app_version . " at " . $time
+	. "\n");
+print STDOUT ("</p>\n");
+
+print STDOUT ("</body>\n");
+print STDOUT ("</html>\n");
+
+__END__
