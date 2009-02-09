@@ -26,31 +26,44 @@ $Getopt::Std::STANDARD_HELP_VERSION = 1;
 
 sub HELP_MESSAGE
 {
-	print("SYNOPSIS\n"
-. "     " . $app_name . " [-OPTIONS]\n"
+	print(
+  "SYNOPSIS\n"
+. "     " . $app_name . " [OPTIONS]\n"
 . "DESCRIPTION\n"
-. "     Reformat html fishe pages.\n"
+. "     Reformat an html fishe page read from stdin.  The generated\n"
+. "     file is output on stdout.\n"
 . "OPTIONS\n"
+. "     -f FORMAT, --format=FORMAT\n"
+. "          Specify the format of the input pages.  Supported values\n"
+. "          for FORMAT are webparts (default).\n"
 . "     -h, --help\n"
 . "          Print a help message.\n"
+. "     -v, --verbose\n"
+. "          Verbose program execution.\n"
 . "     -V, --version\n"
 . "          Display the program version number.\n"
+. "EXAMPLES\n"
+. "     find . -name \'*.html\' | ". $app_name . " --format=webparts\n"
 	);
 }
 
 sub opts_parse (@)
 {
 	my ($opts) = @_;
-	our ($opt_h, $opt_V);
+	our ($opt_f, $opt_h, $opt_v, $opt_V);
 
-	getopts('hV');
+	getopts('f:hvV');
+
+	$opts->{format} = defined($opt_f) ? "$opt_f" : "webparts";
 
 	if (defined($opt_h)) {
 		VERSION_MESSAGE();
 		HELP_MESSAGE();
 		exit 0;
 	}
-	
+
+	$opts->{verbose} = defined($opt_v);
+
 	if (defined($opt_V)) {
 		VERSION_MESSAGE();
 		exit 0;
@@ -64,7 +77,7 @@ sub parse_row (@)
 	my ($part) = @_;
 	my $line;
 
-	die("<tr> not found") if (!m{<tr[^>]*>}i);
+	die($app_name . ": <tr> not found") if (!m{<tr[^>]*>}i);
 
 	$line_no++;
 	$line = <STDIN>;
@@ -106,12 +119,12 @@ sub parse_row (@)
 		last if (m{</tr>}i);
 	}
 
-	die("img_no not found") if (!defined($part->{img_no}));
-	die("desc not found") if (!defined($part->{desc}));
-	die("supp not found") if (!defined($part->{supp}));
-	die("quantity not found") if (!defined($part->{quantity}));
-	die("part_no not found") if (!defined($part->{part_no}));
-	die("price not found") if (!defined($part->{price}));
+	die($app_name . ": img_no not found") if (!defined($part->{img_no}));
+	die($app_name . ": desc not found") if (!defined($part->{desc}));
+	die($app_name . ": supp not found") if (!defined($part->{supp}));
+	die($app_name . ": quantity not found") if (!defined($part->{quantity}));
+	die($app_name . ": part_no not found") if (!defined($part->{part_no}));
+	die($app_name . ": price not found") if (!defined($part->{price}));
 
 	return 1;
 }
@@ -123,8 +136,6 @@ opts_parse(\%opts);
 
 my $time =`date '+%y.%m.%d %H:%M'`;
 chomp($time);
-
-my $part_count = 0;
 
 my %tags;
 my @parts;
@@ -158,14 +169,14 @@ while(<>) {
 		next if (!m{<tr>}i);
 
 		if (parse_row(\%part)) {
-			$part_count++;
-			#$part{desc} = $part_count . ": " . $part{desc};
+			#$part{desc} = $#parts . ": " . $part{desc};
 			push(@parts, \%part);
 		}
 	}
 }
 
-print STDERR ($app_name . ": found " . $part_count . " parts\n");
+print STDERR ($app_name . ": found " . $#parts . " parts\n")
+	if ($opts{verbose});
 
 print STDOUT ("<html>\n");
 print STDOUT ("<head>\n");
