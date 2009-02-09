@@ -1,0 +1,152 @@
+#!/usr/bin/perl -w
+#
+# Copyright 2009 Geoff Levand
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+#
+# wget --recursive --page-requisites --convert-links --no-parent \
+#  --accept 'diagram.php*,jpg' \
+# --exclude-directories='/moto_photos,/images,/product_photos' \
+#  'http://www.webparts.com/mgfg.php?series=K66&model=R100PD'
+#
+
+package main;
+
+use strict;
+use warnings;
+use Getopt::Std;
+
+my $app_name = q(fiche-maker-batch);
+my $package_name = q(fiche-maker);
+my $app_version = q(1.0);
+
+sub VERSION_MESSAGE
+{
+	print($app_name . " (" . $package_name . ") " . $app_version . "\n");
+}
+
+$Getopt::Std::STANDARD_HELP_VERSION = 1;
+
+sub HELP_MESSAGE
+{
+	print(
+  "SYNOPSIS\n"
+. "     " . $app_name . " [OPTIONS]\n"
+. "DESCRIPTION\n"
+. "     Run fiche-maker on a list of files from stdin.\n"
+. "OPTIONS\n"
+. "     -h, --help\n"
+. "          Print a help message.\n"
+. "     -o OUT, --output-dir=OUT\n"
+. "          Put generated files in directory OUT.  The default is to\n"
+. "          put the generated file in the same directory as the source\n"
+. "          file.\n"
+. "\n"
+. "          Note that the use of the --output-dir option will typically\n"
+. "          require the user to copy the fishe image files to the\n"
+. "          directory OUT.\n"
+. "     -v, --verbose\n"
+. "          Verbose program execution.\n"
+. "     -V, --version\n"
+. "          Display the program version number.\n"
+. "EXAMPLES\n"
+. "     find in -name \'diagram.php*\' | ". $app_name . " -o out\n"
+. "     mkdir out/parts\n"
+. "     ln in/parts/* out/parts/\n"
+	);
+}
+
+sub opts_parse (@)
+{
+	my ($opts) = @_;
+	our ($opt_h, $opt_o, $opt_v, $opt_V);
+
+	getopts('ho:vV');
+
+	if (defined($opt_h)) {
+		VERSION_MESSAGE();
+		HELP_MESSAGE();
+		exit 0;
+	}
+
+	$opts->{out} = $opt_o;
+	$opts->{verbose} = defined($opt_v);
+
+	if (defined($opt_V)) {
+		VERSION_MESSAGE();
+		exit 0;
+	}
+}
+
+sub dir_make (@)
+{
+	my ($dir) = @_;
+
+	$dir =~ s/'/'\\''/g;
+
+	my $cmd = q(mkdir -p ') . $dir . q(');
+
+	#print STDOUT ($app_name . ": cmd: @" . $cmd . "@\n")
+
+	my $result = system($cmd);
+
+	if ($result) {
+		print STDERR ($app_name . ": error: @" . $cmd . "@ failed.\n");
+		exit 1;
+	}
+}
+
+# start of program
+
+my %opts;
+opts_parse(\%opts);
+
+my @files;
+
+while(<>) {
+	chomp($_);
+
+	if (m{(.*)/[^/]+btnr=([0-9]{2}_[0-9]{4})[^[0-9]}i) {
+		my %file;
+
+		$file{orig} = $_;
+		$file{new} = (defined($opts{out}) ? $opts{out} : $1)
+			. q(/) . $2 . ".html";
+
+		push(@files, \%file);
+	}
+}
+
+print STDERR ($app_name . ": processing " . $#files . " files\n")
+	if ($opts{verbose});
+
+dir_make($opts{out}) if (defined($opts{out}));
+
+FILE: foreach my $file (@files) {
+	# Prepare for shell
+
+	my $orig = $file->{orig};
+	$orig =~ s/'/'\\''/g;
+	$orig = q(') . $orig . q(');
+
+	my $new = $file->{new};
+	$new =~ s/'/'\\''/g;
+	$new = q(') . $new . q(');
+
+	my $cmd = q(cat ) . $orig . q( | ./fiche-maker )
+		. ($opts{verbose} ? q(-v > ) : q(> )) . $new;
+
+	print STDOUT ($app_name . ": " . $cmd . "\n")
+		if ($opts{verbose});
+
+	my $result = system($cmd);
+
+	if ($result) {
+		print STDERR ($app_name . ": error: @" . $cmd . "@ failed.\n");
+		exit 1;
+	}
+}
+
+__END__
