@@ -119,7 +119,7 @@ while(<>) {
 	}
 }
 
-print STDERR ($app_name . ": processing " . $#files . " files\n")
+print STDERR ($app_name . ": processing " . (1 + $#files) . " files\n")
 	if ($opts{verbose});
 
 dir_make($opts{out}) if (defined($opts{out}));
