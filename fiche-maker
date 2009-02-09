@@ -175,7 +175,7 @@ while(<>) {
 	}
 }
 
-print STDERR ($app_name . ": found " . $#parts . " parts\n")
+print STDERR ($app_name . ": found " . (1 + $#parts) . " parts\n")
 	if ($opts{verbose});
 
 print STDOUT ("<html>\n");
@@ -185,8 +185,8 @@ print STDOUT ("</head>\n");
 print STDOUT ("<body>\n");
 
 print STDOUT ("<p>\n");
-print STDOUT ("<a href=\"index.html\"><nobr>Index</nobr></a>&nbsp;"
-	. "<a href=\"" . $tags{img} . "\"><nobr>Full Size</nobr></a><br>\n");
+print STDOUT ("<a href=\"index.html\"><nobr>index</nobr></a>&nbsp;&nbsp;"
+	. "<a href=\"" . $tags{img} . "\"><nobr>full size</nobr></a><br>\n");
 print STDOUT ("<span id=\"model\">". $tags{model} . "</span><br>\n");
 print STDOUT ("Diagram <span id=\"diagram\">" . $tags{diagram} . "</span><br>\n");
 print STDOUT ("<b><span id=\"group\">". $tags{group} . "</span></b>\n");
@@ -212,7 +212,7 @@ print STDOUT (" </tr>\n");
 print STDOUT ("\n");
 
 PART: foreach my $part (@parts) {
-	print STDOUT (" <tr>\n");
+	print STDOUT (" <tr id=\"part\">\n");
 	print STDOUT ("  <td>" . $part->{img_no} . "</td>\n");
 	print STDOUT ("  <td>" . $part->{desc} . "</td>\n");
 	print STDOUT ("  <td>" . $part->{supp} . "</td>\n");
