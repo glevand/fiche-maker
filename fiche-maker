@@ -30,7 +30,7 @@ sub HELP_MESSAGE
   "SYNOPSIS\n"
 . "     " . $app_name . " [OPTIONS]\n"
 . "DESCRIPTION\n"
-. "     Reformat an html fishe page read from stdin.  The generated\n"
+. "     Reformat an html fiche page read from stdin.  The generated\n"
 . "     file is output on stdout.\n"
 . "OPTIONS\n"
 . "     -f FORMAT, --format=FORMAT\n"
