@@ -45,7 +45,7 @@ sub HELP_MESSAGE
 . "          file.\n"
 . "\n"
 . "          Note that the use of the --output-dir option will typically\n"
-. "          require the user to copy the fishe image files to the\n"
+. "          require the user to copy the fiche image files to the\n"
 . "          directory OUT.\n"
 . "     -v, --verbose\n"
 . "          Verbose program execution.\n"
