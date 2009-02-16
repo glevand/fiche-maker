@@ -24,7 +24,8 @@ my $app_version = q(1.0);
 
 sub VERSION_MESSAGE
 {
-	print($app_name . " (" . $package_name . ") " . $app_version . "\n");
+	print($app_name . q{ (} . $package_name . q{) } . $app_version
+		. qq(\n));
 }
 
 $Getopt::Std::STANDARD_HELP_VERSION = 1;
@@ -32,38 +33,41 @@ $Getopt::Std::STANDARD_HELP_VERSION = 1;
 sub HELP_MESSAGE
 {
 	print(
-  "SYNOPSIS\n"
-. "     " . $app_name . " [OPTIONS]\n"
-. "DESCRIPTION\n"
-. "     Run fiche-maker on a list of files from stdin.\n"
-. "OPTIONS\n"
-. "     -h, --help\n"
-. "          Print a help message.\n"
-. "     -o OUT, --output-dir=OUT\n"
-. "          Put generated files in directory OUT.  The default is to\n"
-. "          put the generated file in the same directory as the source\n"
-. "          file.\n"
-. "\n"
-. "          Note that the use of the --output-dir option will typically\n"
-. "          require the user to copy the fiche image files to the\n"
-. "          directory OUT.\n"
-. "     -v, --verbose\n"
-. "          Verbose program execution.\n"
-. "     -V, --version\n"
-. "          Display the program version number.\n"
-. "EXAMPLES\n"
-. "     find in -name \'diagram.php*\' | ". $app_name . " -o out\n"
-. "     mkdir out/parts\n"
-. "     ln in/parts/* out/parts/\n"
+  qq(SYNOPSIS\n)
+. qq(     ) . $app_name . qq( [OPTIONS]\n)
+. qq(DESCRIPTION\n)
+. qq(     Runs fiche-maker on the list of files on stdin and then runs\n)
+. qq(     fiche-indexer to create a fiche index for the generated pages.\n)
+. qq(OPTIONS\n)
+. qq(     -h, --help\n)
+. qq(          Print a help message.\n)
+. qq(     -n, --no-index\n)
+. qq(          Do not run fiche-indexer.\n)
+. qq(     -o OUT, --output-dir=OUT\n)
+. qq(          Put generated files in directory OUT.  The default is to\n)
+. qq(          put the generated file in the same directory as the source\n)
+. qq(          file.\n)
+. qq(\n)
+. qq(          Note that the use of the --output-dir option will typically\n)
+. qq(          require the user to copy the fiche image files to the\n)
+. qq(          directory OUT.\n)
+. qq(     -v, --verbose\n)
+. qq(          Verbose program execution.\n)
+. qq(     -V, --version\n)
+. qq(          Display the program version number.\n)
+. qq(EXAMPLES\n)
+. qq(     find in -name \'diagram.php*\' | ). $app_name . qq( -o out\n)
+. qq(     mkdir out/parts\n)
+. qq(     ln in/parts/* out/parts/\n)
 	);
 }
 
 sub opts_parse (@)
 {
 	my ($opts) = @_;
-	our ($opt_h, $opt_o, $opt_v, $opt_V);
+	our ($opt_h, $opt_n, $opt_o, $opt_v, $opt_V);
 
-	getopts('ho:vV');
+	getopts('hno:vV');
 
 	if (defined($opt_h)) {
 		VERSION_MESSAGE();
@@ -71,6 +75,7 @@ sub opts_parse (@)
 		exit 0;
 	}
 
+	$opts->{no_index} = $opt_n;
 	$opts->{out} = $opt_o;
 	$opts->{verbose} = defined($opt_v);
 
@@ -88,12 +93,12 @@ sub dir_make (@)
 
 	my $cmd = q(mkdir -p ') . $dir . q(');
 
-	#print STDOUT ($app_name . ": cmd: @" . $cmd . "@\n")
+	#print STDOUT ($app_name . qq(: cmd: @) . $cmd . qq(@\n))
 
 	my $result = system($cmd);
 
 	if ($result) {
-		print STDERR ($app_name . ": error: @" . $cmd . "@ failed.\n");
+		print STDERR ($app_name . qq(: error: @) . $cmd . qq(@ failed.\n));
 		exit 1;
 	}
 }
@@ -104,6 +109,7 @@ my %opts;
 opts_parse(\%opts);
 
 my @files;
+my @index_list;
 
 while(<>) {
 	chomp($_);
@@ -113,14 +119,14 @@ while(<>) {
 
 		$file{orig} = $_;
 		$file{new} = (defined($opts{out}) ? $opts{out} : $1)
-			. q(/) . $2 . ".html";
+			. q(/) . $2 . qq(.html);
 
 		push(@files, \%file);
+		push(@index_list, $file{new}) if (!defined($opts{no_index}));
 	}
 }
 
-print STDERR ($app_name . ": processing " . (1 + $#files) . " files\n")
-	if ($opts{verbose});
+print STDERR ($app_name . qq(: processing ) . @files . qq( files\n));
 
 dir_make($opts{out}) if (defined($opts{out}));
 
@@ -138,15 +144,36 @@ FILE: foreach my $file (@files) {
 	my $cmd = q(cat ) . $orig . q( | ./fiche-maker )
 		. ($opts{verbose} ? q(-v > ) : q(> )) . $new;
 
-	print STDOUT ($app_name . ": " . $cmd . "\n")
+	print STDOUT ($app_name . qq(: ) . $cmd . qq(\n))
 		if ($opts{verbose});
 
 	my $result = system($cmd);
 
 	if ($result) {
-		print STDERR ($app_name . ": error: @" . $cmd . "@ failed.\n");
+		print STDERR ($app_name . qq(: error: @) . $cmd . qq(@ failed.\n));
 		exit 1;
 	}
 }
+
+exit 0 if (defined($opts{no_index}));
+
+my $out = defined($opts{out}) ? $opts{out} : qq(./);
+
+$" = qq(\n); # LIST_SEPARATOR
+
+my $cmd = q(echo ") . qq(@index_list) . q(" | ./fiche-indexer)
+	. ($opts{verbose} ? q( -v ) : q( )) . q(-o ) . $out;
+
+print STDOUT ($app_name . qq(: ) . $cmd . qq(\n))
+		if ($opts{verbose});
+
+my $result = system($cmd);
+
+if ($result) {
+	print STDERR ($app_name . qq(: error: fiche-indexer failed.\n));
+	exit 1;
+}
+
+exit 0;
 
 __END__

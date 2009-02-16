@@ -169,13 +169,13 @@ while(<>) {
 		next if (!m{<tr>}i);
 
 		if (parse_row(\%part)) {
-			#$part{desc} = $#parts . ": " . $part{desc};
+			#$part{desc} = @parts . ": " . $part{desc};
 			push(@parts, \%part);
 		}
 	}
 }
 
-print STDERR ($app_name . ": found " . (1 + $#parts) . " parts\n")
+print STDERR ($app_name . ": found " . @parts . " parts\n")
 	if ($opts{verbose});
 
 print STDOUT ("<html>\n");
