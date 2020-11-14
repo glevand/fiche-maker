@@ -13,7 +13,7 @@ Web scraper to filter parts fiche pages into a more compact and usable form. It 
       --exclude-directories='/moto_photos,/images,/product_photos' \
       'http://www.webparts.com/mgfg.php?series=K66&model=R100PD'
 
-    find . -name 'diagram.php*' | ./fiche-maker-batch -o =K67-R100R
+    find . -name 'diagram.php*' | ./fiche-maker-batch -o =K66-R100PD
 
 ## Output
 
@@ -24,4 +24,10 @@ Web scraper to filter parts fiche pages into a more compact and usable form. It 
 ### Generated parts page
 
 ![fiche-11-1688](fm-screen-shots/fiche-11-1688-sm.jpg)
-    
+
+## Licence & Usage
+
+All files in the [fiche-maker project](https://github.com/glevand/fiche-maker), unless
+otherwise noted, are covered by an
+[MIT Plus License](https://github.com/glevand/fiche-maker/blob/master/mit-plus-license.txt).
+The text of the license describes what usage is allowed.
